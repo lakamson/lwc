@@ -252,7 +252,7 @@ export function getComponentConstructor(elm: HTMLElement): ComponentConstructor 
     let ctor: ComponentConstructor | null = null;
 
     if (elm instanceof HTMLElement) {
-        const vm = getAssociatedIfPresent(elm);
+        const vm = getAssociatedVMIfPresent(elm);
 
         if (!isUndefined(vm)) {
             ctor = vm.def.ctor;
@@ -284,7 +284,7 @@ import {
     TrackDef,
 } from './decorators/register';
 import { defaultEmptyTemplate } from './secure-template';
-import { getAssociatedIfPresent } from './vm';
+import { getAssociatedVMIfPresent } from './vm';
 
 // Typescript is inferring the wrong function type for this particular
 // overloaded method: https://github.com/Microsoft/TypeScript/issues/27972
