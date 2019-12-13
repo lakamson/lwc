@@ -37,6 +37,7 @@ import {
 } from './component';
 import { createObservedFieldsDescriptorMap } from './observed-fields';
 import { Template } from './template';
+import { getAssociatedVMIfPresent } from './vm';
 
 export interface ComponentDef extends DecoratorMeta {
     name: string;
@@ -284,7 +285,6 @@ import {
     TrackDef,
 } from './decorators/register';
 import { defaultEmptyTemplate } from './secure-template';
-import { getAssociatedVMIfPresent } from './vm';
 
 // Typescript is inferring the wrong function type for this particular
 // overloaded method: https://github.com/Microsoft/TypeScript/issues/27972
