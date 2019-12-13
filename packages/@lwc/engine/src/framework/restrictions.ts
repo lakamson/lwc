@@ -19,9 +19,12 @@ import {
     isUndefined,
     setPrototypeOf,
     toString,
+    isString,
+    isObject,
 } from '@lwc/shared';
 import { logError } from '../shared/assert';
-import { ComponentInterface } from './component';
+import { LightningElement } from './base-lightning-element';
+import { ComponentInterface, getComponentAsString } from './component';
 import { globalHTMLProperties } from './attributes';
 import { isBeingConstructed, isInvokingRender } from './invoker';
 import { getShadowRootVM, getComponentVM } from './vm';
@@ -299,10 +302,12 @@ function getCustomElementRestrictionsDescriptors(
         throw new ReferenceError();
     }
     const descriptors: PropertyDescriptorMap = getNodeRestrictionsDescriptors(elm, options);
+
     const originalAddEventListener = elm.addEventListener;
     const originalInnerHTMLDescriptor = getPropertyDescriptor(elm, 'innerHTML')!;
     const originalOuterHTMLDescriptor = getPropertyDescriptor(elm, 'outerHTML')!;
     const originalTextContentDescriptor = getPropertyDescriptor(elm, 'textContent')!;
+
     return assign(descriptors, {
         innerHTML: generateAccessorDescriptor({
             get(this: HTMLElement): string {
@@ -382,12 +387,49 @@ function getComponentRestrictionsDescriptors(): PropertyDescriptorMap {
     };
 }
 
-function getLightningElementPrototypeRestrictionsDescriptors(proto: object): PropertyDescriptorMap {
+function getLightningElementPrototypeRestrictionsDescriptors(
+    proto: LightningElement
+): PropertyDescriptorMap {
     if (process.env.NODE_ENV === 'production') {
         // this method should never leak to prod
         throw new ReferenceError();
     }
-    const descriptors = {};
+
+    const originalDispatchEvent = proto.dispatchEvent;
+
+    const descriptors = {
+        dispatchEvent: generateDataDescriptor({
+            value(this: LightningElement, event: Event): boolean {
+                const vm = getComponentVM(this);
+
+                assert.isFalse(
+                    isBeingConstructed(vm),
+                    `this.dispatchEvent() should not be called during the construction of the custom element for ${getComponentAsString(
+                        this
+                    )} because no one is listening just yet.`
+                );
+
+                if (isObject(event)) {
+                    const { type } = event;
+
+                    if (isString(type) && !/^[a-z][a-z0-9_]*$/.test(type)) {
+                        logError(
+                            `Invalid event type "${type}" dispatched in element ${getComponentAsString(
+                                vm.component
+                            )}. ` +
+                                'Event name must start with a lowercase letter and followed only lowercase letters, numbers, and underscores',
+                            vm.elm
+                        );
+                    }
+                }
+
+                // Typescript does not like it when you treat the `arguments` object as an array
+                // @ts-ignore type-mismatch
+                return originalDispatchEvent.apply(this, arguments);
+            },
+        }),
+    };
+
     forEach.call(getOwnPropertyNames(globalHTMLProperties), (propName: string) => {
         if (propName in proto) {
             return; // no need to redefine something that we are already exposing
@@ -412,6 +454,7 @@ function getLightningElementPrototypeRestrictionsDescriptors(proto: object): Pro
             },
         });
     });
+
     return descriptors;
 }
 
@@ -447,6 +490,6 @@ export function patchComponentWithRestrictions(cmp: ComponentInterface) {
     defineProperties(cmp, getComponentRestrictionsDescriptors());
 }
 
-export function patchLightningElementPrototypeWithRestrictions(proto: object) {
+export function patchLightningElementPrototypeWithRestrictions(proto: LightningElement) {
     defineProperties(proto, getLightningElementPrototypeRestrictionsDescriptors(proto));
 }

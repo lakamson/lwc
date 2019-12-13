@@ -302,40 +302,11 @@ function BaseLightningElementConstructor(this: LightningElement) {
 // HTML Element - The Good Parts
 BaseLightningElementConstructor.prototype = {
     constructor: BaseLightningElementConstructor,
-    dispatchEvent(event: Event): boolean {
+    dispatchEvent(): boolean {
         const elm = getLinkedElement(this);
-        const vm = getComponentVM(this);
-
-        if (process.env.NODE_ENV !== 'production') {
-            if (arguments.length === 0) {
-                throw new Error(
-                    `Failed to execute 'dispatchEvent' on ${getComponentAsString(
-                        this
-                    )}: 1 argument required, but only 0 present.`
-                );
-            }
-
-            const { type: evtName } = event;
-            assert.isFalse(
-                isBeingConstructed(vm),
-                `this.dispatchEvent() should not be called during the construction of the custom element for ${getComponentAsString(
-                    this
-                )} because no one is listening for the event "${evtName}" just yet.`
-            );
-
-            if (!/^[a-z][a-z0-9_]*$/.test(evtName)) {
-                logError(
-                    `Invalid event type "${evtName}" dispatched in element ${getComponentAsString(
-                        this
-                    )}. Event name must ${[
-                        '1) Start with a lowercase letter',
-                        '2) Contain only lowercase letters, numbers, and underscores',
-                    ].join(' ')}`,
-                    elm
-                );
-            }
-        }
-        return dispatchEvent.call(elm, event);
+        // Typescript does not like it when you treat the `arguments` object as an array
+        // @ts-ignore type-mismatch;
+        return dispatchEvent.apply(elm, arguments);
     },
     addEventListener(
         type: string,
